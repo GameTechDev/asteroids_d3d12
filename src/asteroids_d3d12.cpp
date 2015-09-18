@@ -913,7 +913,7 @@ void Asteroids::Render(float frameTime, const OrbitCamera& camera, const Setting
     if (settings.vsync)
         ThrowIfFailed(mSwapChain->Present(1, 0));
     else
-        ThrowIfFailed(mSwapChain->Present(0, DXGI_PRESENT_RESTART));
+        ThrowIfFailed(mSwapChain->Present(0, 0));
     ProfileEndPresent();
     
     ThrowIfFailed(mCommandQueue->Signal(mFence, ++mCurrentFence));

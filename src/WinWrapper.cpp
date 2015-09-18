@@ -327,7 +327,7 @@ int main(int argc, char** argv)
 
     if (d3d12Available) {
         // If requested, enumerate the warp adapter
-        // TODO: Allow picking from multiple hardware adaptors
+        // TODO: Allow picking from multiple hardware adapters
         IDXGIAdapter1* adapter = nullptr;
 
         if (gSettings.warp) {
