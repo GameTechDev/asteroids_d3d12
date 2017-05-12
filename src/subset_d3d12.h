@@ -37,7 +37,7 @@ public:
         SafeRelease(&mCmdLst);
         SafeRelease(&mCmdAlloc);
     }
-    
+
     ID3D12GraphicsCommandList* Begin(ID3D12PipelineState* pso)
     {
         ThrowIfFailed(mCmdAlloc->Reset());

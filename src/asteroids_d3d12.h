@@ -124,7 +124,7 @@ private:
     ID3D12Fence*                mFence = nullptr;
     HANDLE                      mFenceEventHandle = NULL;
     UINT64                      mCurrentFence = 0;
-    
+
     // Device
     ID3D12Device*               mDevice = nullptr;
     ID3D12CommandQueue*         mCommandQueue = nullptr;
@@ -142,7 +142,7 @@ private:
     D3D12_VERTEX_BUFFER_VIEW    mSkyboxVertexBufferView;
     D3D12_INDEX_BUFFER_VIEW     mAsteroidIndexBufferView;
     D3D12_VERTEX_BUFFER_VIEW    mAsteroidVertexBufferView;
-    
+
     // Command lists
     ID3D12GraphicsCommandList*  mPreCmdLst = nullptr;
     ID3D12GraphicsCommandList*  mPostCmdLst = nullptr;
@@ -157,9 +157,9 @@ private:
     UploadHeap*                 mMeshUpload = nullptr;
     UINT                        mIndexOffsets[MESH_MAX_SUBDIV_LEVELS + 2]; // inclusive
     UINT                        mNumVerticesPerMesh = 0;
-    
+
     ID3D12PipelineState*        mAsteroidPSO = nullptr;
-    
+
     ID3D12PipelineState*        mSkyboxPSO = nullptr;
     ID3D12Resource*             mSkybox = nullptr;
 
@@ -168,9 +168,9 @@ private:
 
     ID3D12PipelineState*        mSpritePSO = nullptr;
     std::map<std::string, ID3D12Resource*> mSpriteTextures;
-    
+
     GUI*                        mGUI = nullptr;
-    
+
     // Transient, just here to avoid allocations each frame
     std::vector<ID3D12GraphicsCommandList*> mCmdListsToSubmit;
 

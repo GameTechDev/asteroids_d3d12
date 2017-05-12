@@ -21,14 +21,14 @@ cbuffer SkyboxConstantBuffer : register(b0)
 
 struct Skybox_VSIn
 {
-	float3 position : POSITION;
-	float3 uvFace   : UVFACE;
+    float3 position : POSITION;
+    float3 uvFace   : UVFACE;
 };
 
 struct Skybox_VSOut
 {
-	float4 position : SV_Position;
-	float3 coords   : UVFACE;
+    float4 position : SV_Position;
+    float3 coords   : UVFACE;
 };
 
 Skybox_VSOut skybox_vs(Skybox_VSIn input)

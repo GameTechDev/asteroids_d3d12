@@ -16,14 +16,14 @@
 
 struct Font_VSIn
 {
-	float2 position : POSITION;
-	float2 uv       : UV;
+    float2 position : POSITION;
+    float2 uv       : UV;
 };
 
 struct Font_VSOut
 {
-	float4 position : SV_Position;
-	float2 uv       : UV;
+    float4 position : SV_Position;
+    float2 uv       : UV;
 };
 
 Font_VSOut sprite_vs(Font_VSIn input)

@@ -78,19 +78,19 @@ Asteroids::Asteroids(AsteroidsSimulation* asteroids, GUI *gui, UINT minCmdLsts, 
 #endif
 
     // Create device
-    {    
+    {
         ThrowIfFailed(D3D12CreateDevice(
             adapter,
             D3D_FEATURE_LEVEL_11_0,
             IID_PPV_ARGS(&mDevice)));
-                
+
         D3D12_COMMAND_QUEUE_DESC QDesc;
         QDesc.NodeMask = 1;
         QDesc.Priority = 0;
         QDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
         QDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
         ThrowIfFailed(mDevice->CreateCommandQueue(&QDesc, IID_PPV_ARGS(&mCommandQueue)));
-                                
+
         ThrowIfFailed(mDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mFence)));
     }
 
@@ -104,10 +104,10 @@ Asteroids::Asteroids(AsteroidsSimulation* asteroids, GUI *gui, UINT minCmdLsts, 
     mDepthStencilView = mDSVDescs->Append();
     mRTVFormat = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
     mDSVFormat = DXGI_FORMAT_D32_FLOAT;
-        
+
     CreatePSOs();
     CreateMeshes();
-    
+
     // Create textures
     {
         // TODO: Query simulation for this data? Defines good enough for now...
@@ -134,9 +134,9 @@ Asteroids::Asteroids(AsteroidsSimulation* asteroids, GUI *gui, UINT minCmdLsts, 
         ThrowIfFailed(CreateTexture2DFromDDS_XXXX8(
             mDevice, mCommandQueue, &mSkybox, "starbox_1024.dds", DXGI_FORMAT_B8G8R8A8_UNORM_SRGB));
     }
-    
+
     CreateGUIResources();
-    
+
     // Fill in general heaps
     { // Samplers
         D3D12_SAMPLER_DESC sampler = {};
@@ -149,7 +149,7 @@ Asteroids::Asteroids(AsteroidsSimulation* asteroids, GUI *gui, UINT minCmdLsts, 
         sampler.MaxLOD =  std::numeric_limits<float>::max();
         mSampler = mSMPDescs->Append(&sampler);
     }
-    
+
     // Swap chain resources
     for (UINT s = 0; s < NUM_SWAP_CHAIN_BUFFERS; s++) {
         // Filled in in resize, just make a slot here
@@ -181,14 +181,14 @@ Asteroids::Asteroids(AsteroidsSimulation* asteroids, GUI *gui, UINT minCmdLsts, 
             indirectDraw->mDrawIndexed.StartInstanceLocation = 0;
             indirectDraw->mDrawIndexed.BaseVertexLocation = staticData[j].vertexStart;
         }
-        
-        // Dynamic sprite vertices        
+
+        // Dynamic sprite vertices
         {
             frame->mSpriteVertexBufferView.BufferLocation = dynamicUploadGPUVA + offsetof(DynamicUploadHeap, mSpriteVertices);
             frame->mSpriteVertexBufferView.StrideInBytes  = sizeof(SpriteVertex);
             frame->mSpriteVertexBufferView.SizeInBytes    = sizeof(SpriteVertex) * MAX_SPRITE_VERTICES_PER_FRAME;
         }
-        
+
         // General frame SRV descriptor heap
         {
             // We allocate a pile of extra space for dynamic descriptors (GUI, etc)
@@ -196,14 +196,14 @@ Asteroids::Asteroids(AsteroidsSimulation* asteroids, GUI *gui, UINT minCmdLsts, 
 
             // Skybox constants
             frame->mSkyboxConstants = dynamicUploadGPUVA + offsetof(DynamicUploadHeap, mSkyboxConstants);
-                                    
+
             // Skybox texture
             {
                 auto textureDesc = mSkybox->GetDesc();
 
                 D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
                 srvDesc.Format = textureDesc.Format;
-                srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;                
+                srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
                 srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
                 srvDesc.TextureCube.MipLevels = 1;
                 srvDesc.TextureCube.MostDetailedMip = 0;
@@ -230,7 +230,7 @@ Asteroids::Asteroids(AsteroidsSimulation* asteroids, GUI *gui, UINT minCmdLsts, 
     minCmdLsts = std::min(minCmdLsts, (UINT)NUM_ASTEROIDS);
     CreateSubsets(minCmdLsts);
     std::cout << "Using " << mSubsetCount << " subsets per frame." << std::endl;
-    
+
     // Just in case
     WaitForAll();
 }
@@ -256,7 +256,7 @@ Asteroids::~Asteroids()
     SafeRelease(&mSpritePSO);
     SafeRelease(&mSkybox);
     SafeRelease(&mSkyboxPSO);
-        
+
     for (UINT f = 0; f < NUM_FRAMES_TO_BUFFER; ++f) {
         auto frame = &mFrame[f];
         SafeRelease(&frame->mCmdAlloc);
@@ -265,7 +265,7 @@ Asteroids::~Asteroids()
     }
 
     ReleaseSubsets();
-    
+
     delete mMeshUpload;
 
     delete mRTVDescs;
@@ -273,7 +273,7 @@ Asteroids::~Asteroids()
     delete mSMPDescs;
     delete mSRVDescs;
 
-    SafeRelease(&mGenericRootSignature);    
+    SafeRelease(&mGenericRootSignature);
     SafeRelease(&mAsteroidsRootSignature);
     SafeRelease(&mCommandSignature);
     SafeRelease(&mFence);
@@ -383,8 +383,8 @@ void Asteroids::ResizeSwapChain(IDXGIFactory2* dxgiFactory, HWND outputWindow, u
         ));
 
         mDevice->CreateDepthStencilView(mDepthStencil, nullptr, mDepthStencilView);
-    }    
-    
+    }
+
     // create the viewport and scissor
     ZeroMemory(&mViewPort, sizeof(D3D11_VIEWPORT));
     mViewPort.TopLeftX = 0;
@@ -412,7 +412,7 @@ void Asteroids::CreatePSOs()
         rootParams[RP_DRAW_CBV].InitAsConstantBufferView(0, 0, D3D12_SHADER_VISIBILITY_ALL); // b0
         rootParams[RP_TEX_SRV].InitAsDescriptorTable(1, &descRanges[0], D3D12_SHADER_VISIBILITY_PIXEL); // t0
         rootParams[RP_SMP].InitAsDescriptorTable(1, &descRanges[1], D3D12_SHADER_VISIBILITY_PIXEL); // s0
-                
+
         CD3DX12_ROOT_SIGNATURE_DESC RSLayout(ARRAYSIZE(rootParams), rootParams, 0, 0,
             D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
             D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
@@ -424,7 +424,7 @@ void Asteroids::CreatePSOs()
 
         ThrowIfFailed(mDevice->CreateRootSignature(
             1,
-            serializedLayout->GetBufferPointer(), 
+            serializedLayout->GetBufferPointer(),
             serializedLayout->GetBufferSize(),
             IID_PPV_ARGS(&mGenericRootSignature)));
 
@@ -441,7 +441,7 @@ void Asteroids::CreatePSOs()
         rootParams[RP_DRAW_CBV].InitAsConstantBufferView(0, 0, D3D12_SHADER_VISIBILITY_ALL); // b0
         rootParams[RP_TEX_SRV].InitAsDescriptorTable(1, &descRanges[0], D3D12_SHADER_VISIBILITY_PIXEL); // t0
         rootParams[RP_SMP].InitAsDescriptorTable(1, &descRanges[1], D3D12_SHADER_VISIBILITY_PIXEL); // s0
-        
+
         CD3DX12_ROOT_SIGNATURE_DESC RSLayout(ARRAYSIZE(rootParams), rootParams, 0, 0,
             D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
             D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
@@ -480,7 +480,7 @@ void Asteroids::CreatePSOs()
     D3D12_GRAPHICS_PIPELINE_STATE_DESC defaultDesc = {};
     defaultDesc.BlendState = CD3DX12_BLEND_DESC(CD3DX12_DEFAULT());
     defaultDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(CD3DX12_DEFAULT());
-    defaultDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(CD3DX12_DEFAULT());    
+    defaultDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(CD3DX12_DEFAULT());
     defaultDesc.pRootSignature = mGenericRootSignature;
     defaultDesc.SampleMask = UINT_MAX;
     defaultDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
@@ -489,7 +489,7 @@ void Asteroids::CreatePSOs()
     defaultDesc.DSVFormat = mDSVFormat;
     defaultDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
     defaultDesc.SampleDesc.Count = 1;
-    
+
     // asteroid pipeline state
     D3D12_INPUT_ELEMENT_DESC asteroidInputDesc[] = {
             { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -500,7 +500,7 @@ void Asteroids::CreatePSOs()
     asteroidDesc.VS = { g_asteroid_vs, sizeof(g_asteroid_vs) };
     asteroidDesc.PS = { g_asteroid_ps, sizeof(g_asteroid_ps) };
     asteroidDesc.InputLayout = { asteroidInputDesc, ARRAYSIZE(asteroidInputDesc) };
-    
+
     // skybox pipeline state
     D3D12_INPUT_ELEMENT_DESC skyboxInputDesc[] = {
             { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
@@ -526,7 +526,7 @@ void Asteroids::CreatePSOs()
     spriteDesc.BlendState.RenderTarget[0].SrcBlend    = D3D12_BLEND_ONE;
     spriteDesc.BlendState.RenderTarget[0].BlendOp     = D3D12_BLEND_OP_ADD;
     spriteDesc.BlendState.RenderTarget[0].DestBlend   = D3D12_BLEND_INV_SRC_ALPHA;
-        
+
     // font pipeline state
     D3D12_GRAPHICS_PIPELINE_STATE_DESC fontDesc = spriteDesc;
     fontDesc.PS = { g_font_ps, sizeof(g_font_ps) };
@@ -543,10 +543,10 @@ void Asteroids::CreatePSOs()
 void Asteroids::CreateSubsets(UINT numHeapsPerFrame)
 {
     ReleaseSubsets();
-    
+
     mDrawsPerSubset = (NUM_ASTEROIDS + numHeapsPerFrame - 1) / numHeapsPerFrame;
     mSubsetCount = numHeapsPerFrame;
-    
+
     for (UINT f = 0; f < NUM_FRAMES_TO_BUFFER; f++) {
         // Per-frame data
         auto frame = &mFrame[f];
@@ -590,9 +590,9 @@ void Asteroids::CreateMeshes()
 
     UINT64 asteroidVBOffset = 0;
     UINT64 asteroidIBOffset = asteroidVBOffset + asteroidVBSize;
-    UINT64 skyboxVBOffset   = asteroidIBOffset + asteroidIBSize;    
+    UINT64 skyboxVBOffset   = asteroidIBOffset + asteroidIBSize;
     UINT64 totalSize = skyboxVBOffset + skyboxVBSize;
-        
+
     mMeshUpload = new UploadHeap(mDevice, totalSize);
     auto bufferWO = (BYTE*)mMeshUpload->DataWO();
     auto gpuVA = mMeshUpload->Heap()->GetGPUVirtualAddress();
@@ -614,7 +614,7 @@ void Asteroids::CreateMeshes()
         mAsteroidIndexBufferView.SizeInBytes    = static_cast<UINT>(asteroidIBSize);
         mAsteroidIndexBufferView.Format         = sizeof(IndexType) == 2 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
     }
-    
+
     // Skybox vertices
     {
         memcpy(bufferWO + skyboxVBOffset, skyboxVertices.data(), skyboxVBSize);
@@ -631,7 +631,7 @@ void Asteroids::CreateGUIResources()
     auto font = mGUI->Font();
     auto textureDesc = CD3DX12_RESOURCE_DESC::Tex2D(
         DXGI_FORMAT_A8_UNORM, font->BitmapWidth(), font->BitmapHeight(), 1, 1);
-    
+
     ThrowIfFailed(mDevice->CreateCommittedResource(
         &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
         D3D12_HEAP_FLAG_NONE,
@@ -670,7 +670,7 @@ void Asteroids::WaitForReadyToRender()
 {
     // Wait for both the GPU to be done with our per-frame resources
     HANDLE handles[] = { mFenceEventHandle };
-    
+
     ProfileBeginFenceWait();
     ThrowIfFailed(mFence->SetEventOnCompletion(mFrame[mCurrentFrameIndex].mFrameCompleteFence, mFenceEventHandle));
     WaitForMultipleObjects(ARRAYSIZE(handles), handles, TRUE, INFINITE);
@@ -701,14 +701,14 @@ void Asteroids::RenderSubset(
     auto staticAsteroidData = mAsteroids->StaticData();
     auto dynamicAsteroidData = mAsteroids->DynamicData();
     ProfileEndSimUpdate();
-    
+
     auto cmdLst = subset->Begin(mAsteroidPSO);
 
     // Root signature and common bindings
     cmdLst->SetGraphicsRootSignature(mAsteroidsRootSignature);
     ID3D12DescriptorHeap* heaps[2] = {mSRVDescs->Heap(), mSMPDescs->Heap()};
     cmdLst->SetDescriptorHeaps(ARRAYSIZE(heaps), heaps);
-        
+
     // Common state
     cmdLst->IASetIndexBuffer(&mAsteroidIndexBufferView);
     cmdLst->IASetVertexBuffers(0, 1, &mAsteroidVertexBufferView);
@@ -716,11 +716,11 @@ void Asteroids::RenderSubset(
     cmdLst->RSSetScissorRects(1, &mScissorRect);
     cmdLst->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     cmdLst->OMSetRenderTargets(1, &renderTargetView, true, &mDepthStencilView);
-        
+
     // Set textures (all as a single descriptor table) and samplers
     cmdLst->SetGraphicsRootDescriptorTable(RP_TEX_SRV, mSRVDescs->GPU(0));
     cmdLst->SetGraphicsRootDescriptorTable(RP_SMP, mSampler);
-        
+
     if (!settings.executeIndirect)
     {
         // Standard draw path
@@ -736,7 +736,7 @@ void Asteroids::RenderSubset(
             // Set root cbuffer
             cmdLst->SetGraphicsRootConstantBufferView(RP_DRAW_CBV, constantsPointer);
             constantsPointer += sizeof(DrawConstantBuffer);
-                    
+
             cmdLst->DrawIndexedInstanced(dynamicData->indexCount, 1, dynamicData->indexStart, staticData->vertexStart, 0);
         }
     }
@@ -840,7 +840,7 @@ void Asteroids::Render(float frameTime, const OrbitCamera& camera, const Setting
             mPostCmdLst->RSSetScissorRects(1, &mScissorRect);
             mPostCmdLst->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
             mPostCmdLst->OMSetRenderTargets(1, &swapChainBuffer->mRenderTargetView, true, &mDepthStencilView);
-            
+
             // Draw skybox
             {
                 auto constants = &frame->mDynamicUpload->DataWO()->mSkyboxConstants;
@@ -895,7 +895,7 @@ void Asteroids::Render(float frameTime, const OrbitCamera& camera, const Setting
             ThrowIfFailed(mPostCmdLst->Close());
         }
     }
-    
+
     ProfileEndRender();
 
     ProfileBeginRenderSubmit();
@@ -921,11 +921,11 @@ void Asteroids::Render(float frameTime, const OrbitCamera& camera, const Setting
     else
         ThrowIfFailed(mSwapChain->Present(0, 0));
     ProfileEndPresent();
-    
+
     ThrowIfFailed(mCommandQueue->Signal(mFence, ++mCurrentFence));
     frame->mFrameCompleteFence = mCurrentFence;
     mCurrentFrameIndex = (mCurrentFrameIndex + 1) % NUM_FRAMES_TO_BUFFER;
-        
+
     ProfileEndFrame();
 }
 

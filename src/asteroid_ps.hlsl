@@ -56,7 +56,7 @@ float4 asteroid_ps(VSOut input) : SV_Target
 
     // Approximate partial coverage on distant asteroids (by fading them out)
     float coverage = saturate(input.position.z * 4000.0f);
-    
+
     float3 color = input.albedo;
     [flatten] if (applyNoise)    color = color * (2.0f * detailTex);
     [flatten] if (applyLight)    color = color * light;

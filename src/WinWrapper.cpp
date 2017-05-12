@@ -72,7 +72,7 @@ UINT SetupDPI()
 {
     // Just do system DPI awareness for now for simplicity... scale the 3D content
     SetProcessDpiAwareness(PROCESS_SYSTEM_DPI_AWARE);
-    
+
     UINT dpiX = 0, dpiY;
     POINT pt = {1, 1};
     auto hMonitor = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
