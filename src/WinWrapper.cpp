@@ -272,26 +272,40 @@ int main(int argc, char** argv)
     gSettings.windowWidth *= dpi / 96;
     gSettings.windowHeight *= dpi / 96;
 
+    char* perfOutputPath = nullptr;
     for (int a = 1; a < argc; ++a) {
         if (_stricmp(argv[a], "-close_after") == 0 && a + 1 < argc) {
             gSettings.closeAfterSeconds = atof(argv[++a]);
+            printf("Close after %f seconds\n", gSettings.closeAfterSeconds);
         } else if (_stricmp(argv[a], "-nod3d11") == 0) {
             d3d11Available = false;
+            printf("Disable D3D11 path\n");
         } else if (_stricmp(argv[a], "-warp") == 0) {
             gSettings.warp = true;
+            printf("Use WARP adapter\n");
         } else if (_stricmp(argv[a], "-nod3d12") == 0) {
             d3d12Available = false;
+            printf("Disable D3D12 path\n");
         } else if (_stricmp(argv[a], "-indirect") == 0) {
             gSettings.executeIndirect = true;
+            printf("Enable ExecuteIndirect implementation\n");
         } else if (_stricmp(argv[a], "-fullscreen") == 0) {
             gSettings.windowed = false;
+            printf("Fullscreen\n");
         } else if (_stricmp(argv[a], "-window") == 0 && a + 2 < argc) {
             gSettings.windowWidth = atoi(argv[++a]);
             gSettings.windowHeight = atoi(argv[++a]);
+            printf("%ux%u window\n", gSettings.windowWidth, gSettings.windowHeight);
         } else if (_stricmp(argv[a], "-render_scale") == 0 && a + 1 < argc) {
             gSettings.renderScale = atof(argv[++a]);
+            printf("%f render scale\n", gSettings.renderScale);
         } else if (_stricmp(argv[a], "-locked_fps") == 0 && a + 1 < argc) {
+            gSettings.lockFrameRate = true;
             gSettings.lockedFrameRate = atoi(argv[++a]);
+            printf("FPS locked to %u\n", gSettings.lockedFrameRate);
+        } else if (_stricmp(argv[a], "-perf_output") == 0 && a + 1 < argc) {
+            perfOutputPath = argv[++a];
+            printf("Output frame performance to '%s'\n", perfOutputPath);
         } else {
             fprintf(stderr, "error: unrecognized argument '%s'\n", argv[a]);
             fprintf(stderr, "usage: asteroids_d3d12 [options]\n");
@@ -303,6 +317,7 @@ int main(int argc, char** argv)
             fprintf(stderr, "  -window [width] [height]\n");
             fprintf(stderr, "  -render_scale [scale]\n");
             fprintf(stderr, "  -locked_fps [fps]\n");
+            fprintf(stderr, "  -perf_output [path]\n");
             fprintf(stderr, "  -warp\n");
             return -1;
         }
@@ -398,12 +413,21 @@ int main(int argc, char** argv)
     QueryPerformanceFrequency((LARGE_INTEGER*)&perfCounterFreq);
     QueryPerformanceCounter((LARGE_INTEGER*)&lastPerfCount);
 
+    FILE* perfOutputFp = nullptr;
+    if (perfOutputPath != nullptr) {
+        perfOutputFp = fopen(perfOutputPath, "wb");
+        if (perfOutputFp == nullptr) {
+            fprintf(stderr, "warning: failed to open performance output file '%s'\n", perfOutputPath);
+        } else {
+            fprintf(perfOutputFp, "Frame time (ms),\n");
+        }
+    }
+
     // main loop
     double elapsedTime = 0.0;
     double frameTime = 0.0;
     int lastMouseX = 0;
     int lastMouseY = 0;
-    POINTER_INFO pointerInfo = {};
 
     timeBeginPeriod(1);
     EnableMouseInPointer(TRUE);
@@ -416,6 +440,11 @@ int main(int argc, char** argv)
         while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
             if (msg.message == WM_QUIT) {
                 // Cleanup
+                if (perfOutputFp != nullptr) {
+                    fclose(perfOutputFp);
+                    perfOutputFp = nullptr;
+                }
+
                 delete gWorkloadD3D11;
                 delete gWorkloadD3D12;
                 SafeRelease(&gDXGIFactory);
@@ -428,6 +457,16 @@ int main(int argc, char** argv)
             DispatchMessage(&msg);
         }
 
+        // Get time delta
+        UINT64 count;
+        QueryPerformanceCounter((LARGE_INTEGER*)&count);
+        auto rawFrameTime = (double)(count - lastPerfCount) / perfCounterFreq;
+        elapsedTime += rawFrameTime;
+        lastPerfCount = count;
+
+        // Maintaining absolute time sync is not important in this demo so we can err on the "smoother" side
+        double alpha = 0.2f;
+        frameTime = alpha * rawFrameTime + (1.0f - alpha) * frameTime;
         // If we swap to a new API we need to recreate swap chains
         if (d3d12LastFrame != gSettings.d3d12) {
             if (gSettings.d3d12) {
@@ -447,17 +486,6 @@ int main(int argc, char** argv)
             gWorkloadD3D12->WaitForReadyToRender();
         }
 
-        // Get time delta
-        UINT64 count;
-        QueryPerformanceCounter((LARGE_INTEGER*)&count);
-        auto rawFrameTime = (double)(count - lastPerfCount) / perfCounterFreq;
-        elapsedTime += rawFrameTime;
-        lastPerfCount = count;
-
-        // Maintaining absolute time sync is not important in this demo so we can err on the "smoother" side
-        double alpha = 0.2f;
-        frameTime = alpha * rawFrameTime + (1.0f - alpha) * frameTime;
-
         // Update GUI
         {
             char buffer[256];
@@ -465,7 +493,7 @@ int main(int argc, char** argv)
             SetWindowText(hWnd, buffer);
 
             if (gSettings.lockFrameRate) {
-                sprintf(buffer, "(Locked)");
+                sprintf(buffer, "%u fps (Locked)", gSettings.lockedFrameRate);
             } else {
                 sprintf(buffer, "%.0f fps", 1.0f / frameTime);
             }
@@ -479,6 +507,10 @@ int main(int argc, char** argv)
             gWorkloadD3D12->Render((float)frameTime, gCamera, gSettings);
         } else {
             gWorkloadD3D11->Render((float)frameTime, gCamera, gSettings);
+        }
+
+        if (perfOutputFp != nullptr) {
+            fprintf(perfOutputFp, "%lf,\n", 1000.0 * frameTime);
         }
 
         if (gSettings.lockFrameRate) {
