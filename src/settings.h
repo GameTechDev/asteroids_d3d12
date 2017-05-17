@@ -63,24 +63,18 @@ struct Settings
     int renderHeight;
 
     unsigned int lockedFrameRate = 15;
+    bool lockFrameRate = false;
 
     bool logFrameTimes = false;
-    bool vsync = 0;
 
-    bool windowed = true;
-    bool d3d12 = true; // Using d3d12 currently or not
+    bool warp = false;                      // Use WARP device
+    bool d3d12 = true;                      // Use D3D12 API (else, D3D11)
+    bool windowed = true;                   // Use non-fullscreen window
+    bool vsync = false;                     // Use v-synced presentation
+    bool animate = true;                    // Animate asteroids
 
-    bool lockFrameRate = false;
-    bool animate = true;
-
-    // Multithreading actually makes debugging annoying so disable by default
-#if defined(_DEBUG)
-    bool multithreadedRendering = false;
-#else
-    bool multithreadedRendering = true;
-#endif
-
-    bool submitRendering = true;
-    bool executeIndirect = false;
-    bool warp = false;
+    // D3D12-only:
+    bool multithreadedRendering = true;     // Generate command lists on multiple threads
+    bool submitRendering = true;            // Submit command lists onto the queue after generating them
+    bool executeIndirect = false;           // Draw asteroids using ExecuteIndirect
 };
