@@ -32,6 +32,10 @@
 #include "profile.h"
 #include "gui.h"
 
+#include <fstream>
+#include <utility>
+#include <tuple>
+
 using namespace DirectX;
 
 namespace {
@@ -72,7 +76,7 @@ UINT SetupDPI()
 {
     // Just do system DPI awareness for now for simplicity... scale the 3D content
     SetProcessDpiAwareness(PROCESS_SYSTEM_DPI_AWARE);
-    
+
     UINT dpiX = 0, dpiY;
     POINT pt = {1, 1};
     auto hMonitor = MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST);
@@ -292,6 +296,10 @@ int main(int argc, char** argv)
             gSettings.renderScale = atof(argv[++a]);
         } else if (_stricmp(argv[a], "-locked_fps") == 0 && a + 1 < argc) {
             gSettings.lockedFrameRate = atoi(argv[++a]);
+        } else if (_stricmp(argv[a], "-stats_csv_file_name") == 0 && a + 1 < argc) {
+            gSettings.statsCsvFileName = argv[++a];
+        } else if (_stricmp(argv[a], "-stats_summary_csv_file_name") == 0 && a + 1 < argc) {
+            gSettings.statsSummaryCsvFileName = argv[++a];
         } else {
             fprintf(stderr, "error: unrecognized argument '%s'\n", argv[a]);
             fprintf(stderr, "usage: asteroids_d3d12 [options]\n");
@@ -302,6 +310,8 @@ int main(int argc, char** argv)
             fprintf(stderr, "  -fullscreen\n");
             fprintf(stderr, "  -window [width] [height]\n");
             fprintf(stderr, "  -render_scale [scale]\n");
+            fprintf(stderr, "  -stats_csv_file_name <stats csv file name>\n");
+            fprintf(stderr, "  -stats_summary_csv_file_name <stats summary csv file name>\n");
             fprintf(stderr, "  -locked_fps [fps]\n");
             fprintf(stderr, "  -warp\n");
             return -1;
@@ -400,13 +410,35 @@ int main(int argc, char** argv)
 
     // main loop
     double elapsedTime = 0.0;
+    double timeInterval = 0.0;
     double frameTime = 0.0;
+    double sumFPS = 0;
+    double currentFPS = 0;
+    double minFPS = 99999999;
+    double maxFPS = 0;
+    std::uint64_t numFrames = 0;
+    if (gSettings.statsCsvFileName == "")
+    {
+        gSettings.statsCsvFileName = "asteroid_summary_stats.csv";
+    }
+    if (gSettings.statsSummaryCsvFileName == "")
+    {
+        gSettings.statsSummaryCsvFileName = "asteroid_stats.csv";
+    }
+
+    std::vector<std::tuple<double, double, double>> fpsHistoryVector;
+
     int lastMouseX = 0;
     int lastMouseY = 0;
     POINTER_INFO pointerInfo = {};
 
     timeBeginPeriod(1);
     EnableMouseInPointer(TRUE);
+
+    if (gSettings.closeAfterSeconds > 0.0)
+    {
+        fpsHistoryVector.reserve(int(gSettings.closeAfterSeconds) + 4);
+    }
 
     for (;;)
     {
@@ -467,8 +499,37 @@ int main(int argc, char** argv)
             if (gSettings.lockFrameRate) {
                 sprintf(buffer, "(Locked)");
             } else {
-                sprintf(buffer, "%.0f fps", 1.0f / frameTime);
+                if (frameTime != 0)
+                    currentFPS = 1.0f / frameTime;
+                sprintf(buffer, "%.0f fps", currentFPS);
             }
+
+            if (gSettings.closeAfterSeconds > 0.0)
+            {
+                ++numFrames;
+                if (numFrames > 100)
+                {
+                    sumFPS = sumFPS + currentFPS;
+
+                    if (currentFPS < minFPS)
+                    {
+                        minFPS = currentFPS;
+                    }
+                    if (currentFPS > maxFPS)
+                    {
+                        maxFPS = currentFPS;
+                    }
+                }
+
+                timeInterval += rawFrameTime * 1000.f;
+
+                if (timeInterval >= 1000)
+                {
+                    fpsHistoryVector.emplace_back(std::make_tuple(elapsedTime, frameTime * 1000.f, rawFrameTime * 1000.f));
+                    timeInterval = 0;
+                }
+            }
+
             gFPSControl->Text(buffer);
 
             gD3D12Control->Visible(gSettings.d3d12);
@@ -499,7 +560,24 @@ int main(int argc, char** argv)
 
         // All done?
         if (gSettings.closeAfterSeconds > 0.0 && elapsedTime > gSettings.closeAfterSeconds) {
+
+            std::ofstream statsFile;
+            statsFile.open(gSettings.statsSummaryCsvFileName);
+            statsFile << "MinFPS,MaxFPS,AverageFPS" << std::endl;
+            double averageFPS = sumFPS / (numFrames - 100);
+            statsFile << minFPS << "," << maxFPS << "," << averageFPS << std::endl;
+            statsFile.close();
+
+            statsFile.open(gSettings.statsCsvFileName);
+            statsFile << "ElapsedTime(s),FrameTime(ms),RawFrameTime(ms)" << std::endl;
+            for (auto sample : fpsHistoryVector)
+            {
+                statsFile << std::get<0>(sample) << "," << std::get<1>(sample) << "," << std::get<2>(sample) << std::endl;
+            }
+            statsFile.close();
+
             SendMessage(hWnd, WM_CLOSE, 0, 0);
+            return 0;
             break;
         }
     }

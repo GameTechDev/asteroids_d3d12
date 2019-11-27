@@ -18,6 +18,7 @@
 
 #include "camera.h"
 #include "common_defines.h"
+#include <string>
 
 // Profiling
 #define ENABLE_VTUNE_TASK_PROFILING 1
@@ -83,4 +84,7 @@ struct Settings
     bool submitRendering = true;
     bool executeIndirect = false;
     bool warp = false;
+
+	std::string statsCsvFileName;
+	std::string statsSummaryCsvFileName;
 };
