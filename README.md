@@ -40,7 +40,7 @@ Controls
 Requirements
 ============
 - Windows 10. The application will run on older operating systems but the DirectX 12 path will not be available.
-- Visual Studio 2015 with the Windows 10 SDK.
+- Visual Studio 2019
 - DirectX 12 capable hardware and drivers. For instance, Intel HD Graphics 4400 or newer.
 
 For more information on Intel graphics and game code, please visit https://software.intel.com/gamedev
