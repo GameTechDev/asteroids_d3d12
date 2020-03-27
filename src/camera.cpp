@@ -17,6 +17,7 @@
 #include "camera.h"
 #include "util.h"
 #include <algorithm>
+#include <cmath>
 
 using namespace DirectX;
 
