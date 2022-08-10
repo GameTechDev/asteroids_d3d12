@@ -482,7 +482,7 @@ void Asteroids::Render(float frameTime, const OrbitCamera& camera, const Setting
     ProfileBeginRenderSubset();
 
     auto viewProjection = camera.ViewProjection();
-    for (UINT drawIdx = 0; drawIdx < NUM_ASTEROIDS; ++drawIdx)
+    for (UINT drawIdx = 0; drawIdx < settings.numAsteroids; ++drawIdx)
     {
         auto staticData = &staticAsteroidData[drawIdx];
         auto dynamicData = &dynamicAsteroidData[drawIdx];

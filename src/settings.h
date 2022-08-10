@@ -62,6 +62,8 @@ struct Settings
     int renderWidth;
     int renderHeight;
 
+    unsigned int numAsteroids = NUM_ASTEROIDS;
+
     unsigned int lockedFrameRate = 15;
     bool lockFrameRate = false;
 

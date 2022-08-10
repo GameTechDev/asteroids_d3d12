@@ -303,6 +303,9 @@ int main(int argc, char** argv)
             gSettings.lockFrameRate = true;
             gSettings.lockedFrameRate = atoi(argv[++a]);
             printf("FPS locked to %u\n", gSettings.lockedFrameRate);
+        } else if (_stricmp(argv[a], "-num_asteroids") == 0 && a + 1 < argc) {
+            gSettings.numAsteroids = atoi(argv[++a]);
+            printf("FPS locked to %u\n", gSettings.lockedFrameRate);
         } else if (_stricmp(argv[a], "-perf_output") == 0 && a + 1 < argc) {
             perfOutputPath = argv[++a];
             printf("Output frame performance to '%s'\n", perfOutputPath);
@@ -339,7 +342,7 @@ int main(int argc, char** argv)
     ResetCameraView();
     // Camera projection set up in WM_SIZE
 
-    AsteroidsSimulation asteroids(1337, NUM_ASTEROIDS, NUM_UNIQUE_MESHES, MESH_MAX_SUBDIV_LEVELS, NUM_UNIQUE_TEXTURES);
+    AsteroidsSimulation asteroids(1337, gSettings.numAsteroids, NUM_UNIQUE_MESHES, MESH_MAX_SUBDIV_LEVELS, NUM_UNIQUE_TEXTURES);
 
     // Create workloads
     if (d3d11Available) {
