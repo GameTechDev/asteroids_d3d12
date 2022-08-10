@@ -294,6 +294,11 @@ int main(int argc, char** argv)
             gSettings.windowHeight = atoi(argv[++a]);
         } else if (_stricmp(argv[a], "-render_scale") == 0 && a + 1 < argc) {
             gSettings.renderScale = atof(argv[++a]);
+        }
+        else if (_stricmp(argv[a], "-render_scale") == 0 && a + 1 < argc) {
+            gSettings.renderScale = atof(argv[++a]);
+        } else if (_stricmp(argv[a], "-num_asteroids") == 0 && a + 1 < argc) {
+            gSettings.numAsteroids = atoi(argv[++a]);
         } else if (_stricmp(argv[a], "-locked_fps") == 0 && a + 1 < argc) {
             gSettings.lockedFrameRate = atoi(argv[++a]);
         } else if (_stricmp(argv[a], "-stats_csv_file_name") == 0 && a + 1 < argc) {
@@ -310,6 +315,7 @@ int main(int argc, char** argv)
             fprintf(stderr, "  -fullscreen\n");
             fprintf(stderr, "  -window [width] [height]\n");
             fprintf(stderr, "  -render_scale [scale]\n");
+            fprintf(stderr, "  -num_asteroids [number of asteroids]   NOTE: ONLY for DX11\n");
             fprintf(stderr, "  -stats_csv_file_name <stats csv file name>\n");
             fprintf(stderr, "  -stats_summary_csv_file_name <stats summary csv file name>\n");
             fprintf(stderr, "  -locked_fps [fps]\n");
@@ -334,7 +340,7 @@ int main(int argc, char** argv)
     ResetCameraView();
     // Camera projection set up in WM_SIZE
 
-    AsteroidsSimulation asteroids(1337, NUM_ASTEROIDS, NUM_UNIQUE_MESHES, MESH_MAX_SUBDIV_LEVELS, NUM_UNIQUE_TEXTURES);
+    AsteroidsSimulation asteroids(1337, gSettings.numAsteroids, NUM_UNIQUE_MESHES, MESH_MAX_SUBDIV_LEVELS, NUM_UNIQUE_TEXTURES);
 
     // Create workloads
     if (d3d11Available) {
