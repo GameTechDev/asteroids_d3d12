@@ -315,7 +315,7 @@ inline void DisableDXGIWindowChanges(IUnknown* device, HWND window)
     pDXGIDevice->Release();
 }
 
-void Asteroids::ResizeSwapChain(IDXGIFactory2* dxgiFactory, HWND outputWindow, unsigned int width, unsigned int height)
+void Asteroids::ResizeSwapChain(IDXGIFactory2* dxgiFactory, HWND outputWindow, unsigned int width, unsigned int height, bool allowTearing)
 {
     ReleaseSwapChain();
 
@@ -333,7 +333,12 @@ void Asteroids::ResizeSwapChain(IDXGIFactory2* dxgiFactory, HWND outputWindow, u
         swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
         swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
         swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED; // Not used
-        swapChainDesc.Flags = 0;
+        if (allowTearing) {
+            swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING;
+        }
+        else {
+            swapChainDesc.Flags = 0;
+        }
 
         IDXGISwapChain1 *swapChain1 = nullptr;
         ThrowIfFailed(dxgiFactory->CreateSwapChainForHwnd(
@@ -915,11 +920,16 @@ void Asteroids::Render(float frameTime, const OrbitCamera& camera, const Setting
 
     ProfileEndRenderSubmit();
 
+    unsigned int presentFlags = 0;
+    if (settings.allowTearing) {
+        presentFlags = DXGI_PRESENT_ALLOW_TEARING;
+    }
+
     ProfileBeginPresent(backBufferIndex);
     if (settings.vsync)
-        ThrowIfFailed(mSwapChain->Present(1, 0));
+        ThrowIfFailed(mSwapChain->Present(1, presentFlags));
     else
-        ThrowIfFailed(mSwapChain->Present(0, 0));
+        ThrowIfFailed(mSwapChain->Present(0, presentFlags));
     ProfileEndPresent();
 
     ThrowIfFailed(mCommandQueue->Signal(mFence, ++mCurrentFence));

@@ -70,7 +70,7 @@ public:
     void Render(float frameTime, const OrbitCamera& camera, const Settings& settings);
 
     void ReleaseSwapChain();
-    void ResizeSwapChain(IDXGIFactory2* dxgiFactory, HWND outputWindow, unsigned int width, unsigned int height);
+    void ResizeSwapChain(IDXGIFactory2* dxgiFactory, HWND outputWindow, unsigned int width, unsigned int height, bool allowTearing);
 
 private:
     void WaitForAll();

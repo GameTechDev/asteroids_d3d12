@@ -23,7 +23,7 @@
 #define ENABLE_VTUNE_TASK_PROFILING 1
 
 // Content settings
-enum { NUM_ASTEROIDS = 50000 };
+enum { NUM_ASTEROIDS = 20000 };
 enum { TEXTURE_DIM = 256 }; // Req'd to be pow2 at the moment
 enum { TEXTURE_ANISO = 2 };
 enum { NUM_UNIQUE_MESHES = 1000 };

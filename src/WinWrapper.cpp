@@ -155,7 +155,7 @@ LRESULT CALLBACK WindowProc(
 
             // Resize currently active swap chain
             if (gSettings.d3d12)
-                gWorkloadD3D12->ResizeSwapChain(gDXGIFactory, hWnd, gSettings.renderWidth, gSettings.renderHeight);
+                gWorkloadD3D12->ResizeSwapChain(gDXGIFactory, hWnd, gSettings.renderWidth, gSettings.renderHeight, gSettings.allowTearing);
             else
                 gWorkloadD3D11->ResizeSwapChain(gDXGIFactory, hWnd, gSettings.renderWidth, gSettings.renderHeight, gSettings.allowTearing);
 
@@ -484,7 +484,7 @@ int main(int argc, char** argv)
         if (d3d12LastFrame != gSettings.d3d12) {
             if (gSettings.d3d12) {
                 gWorkloadD3D11->ReleaseSwapChain();
-                gWorkloadD3D12->ResizeSwapChain(gDXGIFactory, hWnd, gSettings.renderWidth, gSettings.renderHeight);
+                gWorkloadD3D12->ResizeSwapChain(gDXGIFactory, hWnd, gSettings.renderWidth, gSettings.renderHeight, gSettings.allowTearing);
             } else {
                 gWorkloadD3D12->ReleaseSwapChain();
                 gWorkloadD3D11->ResizeSwapChain(gDXGIFactory, hWnd, gSettings.renderWidth, gSettings.renderHeight, gSettings.allowTearing);
