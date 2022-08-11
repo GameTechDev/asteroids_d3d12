@@ -73,6 +73,8 @@ struct Settings
     bool vsync = false;                     // Use v-synced presentation
     bool animate = true;                    // Animate asteroids
 
+    bool allowTearing = false;
+
     // D3D12-only:
     bool multithreadedRendering = true;     // Generate command lists on multiple threads
     bool submitRendering = true;            // Submit command lists onto the queue after generating them
