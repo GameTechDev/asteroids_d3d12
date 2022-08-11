@@ -305,7 +305,7 @@ int main(int argc, char** argv)
             printf("FPS locked to %u\n", gSettings.lockedFrameRate);
         } else if (_stricmp(argv[a], "-num_asteroids") == 0 && a + 1 < argc) {
             gSettings.numAsteroids = atoi(argv[++a]);
-            printf("FPS locked to %u\n", gSettings.lockedFrameRate);
+            printf("Setting number of asteroids to %u\n", gSettings.numAsteroids);
         } else if (_stricmp(argv[a], "-perf_output") == 0 && a + 1 < argc) {
             perfOutputPath = argv[++a];
             printf("Output frame performance to '%s'\n", perfOutputPath);
@@ -322,6 +322,8 @@ int main(int argc, char** argv)
             fprintf(stderr, "  -locked_fps [fps]\n");
             fprintf(stderr, "  -perf_output [path]\n");
             fprintf(stderr, "  -warp\n");
+            fprintf(stderr, "---------  ONLY  FOR  D3D11 ----------\n");
+            fprintf(stderr, "  -num_asteroids [number of asteroids]\n");
             return -1;
         }
     }
