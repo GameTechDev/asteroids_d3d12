@@ -339,7 +339,7 @@ int main(int argc, char** argv)
     {
         if (gSettings.vsync)
         {
-            std::cout << "Tearing cannot be used when vsync is on. Disabling it!" << std::endl;
+            std::cout << "Tearing cannot be used when vsync is on. Disabling tearing!" << std::endl;
             gSettings.allowTearing = false;
         }
     }
