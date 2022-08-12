@@ -55,11 +55,12 @@ struct ExecuteIndirectArgs {
 };
 
 struct DynamicUploadHeap {
-    DrawConstantBuffer mDrawConstantBuffers[NUM_ASTEROIDS];
+    std::vector<DrawConstantBuffer> mDrawConstantBuffers;
     SkyboxConstantBuffer mSkyboxConstants;
-    ExecuteIndirectArgs mIndirectArgs[NUM_ASTEROIDS];
+    std::vector<ExecuteIndirectArgs> mIndirectArgs;
     SpriteVertex mSpriteVertices[MAX_SPRITE_VERTICES_PER_FRAME];
 };
+
 
 class Asteroids {
 public:
@@ -90,11 +91,16 @@ private:
     void CreateMeshes();
     void CreateGUIResources();
 
+    unsigned int GetDynamicUploadHeapSize()
+    {
+        return sizeof(DrawConstantBuffer) * mNumAsteroids + sizeof(SkyboxConstantBuffer) + sizeof(ExecuteIndirectArgs) * mNumAsteroids + sizeof(SpriteVertex) * MAX_SPRITE_VERTICES_PER_FRAME;
+    }
+
     struct Frame {
         std::vector<SubsetD3D12*>   mSubsets;
         ID3D12CommandAllocator*     mCmdAlloc = nullptr;
 
-        UploadHeapT<DynamicUploadHeap>* mDynamicUpload = nullptr;
+        UploadHeap* mDynamicUpload = nullptr;
         D3D12_VERTEX_BUFFER_VIEW    mSpriteVertexBufferView;
         D3D12_GPU_VIRTUAL_ADDRESS   mDrawConstantBuffersGPUVA;
 
@@ -176,6 +182,7 @@ private:
 
     UINT                        mSubsetCount = 0;
     UINT                        mDrawsPerSubset = 0;
+    UINT                        mNumAsteroids;
 };
 
 } // namespace AsteroidsD3D12

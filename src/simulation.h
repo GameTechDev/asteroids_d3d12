@@ -59,6 +59,7 @@ private:
     unsigned int mSubdivCount;
     unsigned int mVertexCountPerMesh;
 
+    unsigned int mNumberOfAsteroids;
     unsigned int mTextureDim;
     unsigned int mTextureCount;
     unsigned int mTextureArraySize;
@@ -91,4 +92,9 @@ public:
     // This is useful for multithreading
     void Update(float frameTime, DirectX::XMVECTOR cameraEye, const Settings& settings,
                 size_t startIndex = 0, size_t count = 0);
+
+    unsigned int getNumberOfAsteroids()
+    {
+        return mNumberOfAsteroids;
+    }
 };

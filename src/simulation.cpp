@@ -69,6 +69,7 @@ AsteroidsSimulation::AsteroidsSimulation(unsigned int rngSeed, unsigned int aste
     , mAsteroidDynamic(asteroidCount)
     , mIndexOffsets(subdivCount + 2) // Mesh subdivs are inclusive on both ends and need forward differencing for count
     , mSubdivCount(subdivCount)
+    , mNumberOfAsteroids(asteroidCount)
 {
     std::mt19937 rng(rngSeed);
 
