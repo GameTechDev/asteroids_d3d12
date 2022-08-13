@@ -173,13 +173,12 @@ Asteroids::Asteroids(AsteroidsSimulation* asteroids, GUI *gui, UINT minCmdLsts, 
         auto staticData = mAsteroids->StaticData();
         for (int j = 0; j < mNumAsteroids; ++j) {
             auto constants = asteroidsDynamicHeap.GetDrawConstantBuffer(j);
-            // auto constants = static_cast<DrawConstantBuffer*>((void*)((unsigned long long)dynamicUploadWO + j * sizeof(DrawConstantBuffer)));
+
             constants->mSurfaceColor = staticData[j].surfaceColor;
             constants->mDeepColor = staticData[j].deepColor;
             constants->mTextureIndex = staticData[j].textureIndex;
 
             auto indirectDraw = asteroidsDynamicHeap.GetExecuteIndirectArgs(j);
-            // auto indirectDraw = static_cast<ExecuteIndirectArgs*>((void*)((unsigned long long)dynamicUploadWO + mNumAsteroids * sizeof(DrawConstantBuffer) + sizeof(SkyboxConstantBuffer) + j * sizeof(ExecuteIndirectArgs))); // &dynamicUploadWO->mIndirectArgs[j];
             indirectDraw->mConstantBuffer = frame->mDrawConstantBuffersGPUVA + sizeof(DrawConstantBuffer) * j;
             indirectDraw->mDrawIndexed.InstanceCount = 1;
             indirectDraw->mDrawIndexed.StartInstanceLocation = 0;
@@ -188,7 +187,6 @@ Asteroids::Asteroids(AsteroidsSimulation* asteroids, GUI *gui, UINT minCmdLsts, 
 
         // Dynamic sprite vertices
         {
-            // frame->mSpriteVertexBufferView.BufferLocation = dynamicUploadGPUVA + mNumAsteroids * sizeof(DrawConstantBuffer) + sizeof(SkyboxConstantBuffer) + mNumAsteroids  * sizeof(ExecuteIndirectArgs); // offsetof(DynamicUploadHeap, mSpriteVertices);
             frame->mSpriteVertexBufferView.BufferLocation = dynamicUploadGPUVA + asteroidsDynamicHeap.GetSpriteVerticesOffset();
             frame->mSpriteVertexBufferView.StrideInBytes  = sizeof(SpriteVertex);
             frame->mSpriteVertexBufferView.SizeInBytes    = sizeof(SpriteVertex) * MAX_SPRITE_VERTICES_PER_FRAME;
@@ -200,7 +198,6 @@ Asteroids::Asteroids(AsteroidsSimulation* asteroids, GUI *gui, UINT minCmdLsts, 
             frame->mSRVDescs = new SRVDescriptorList(mDevice, 100);
 
             // Skybox constants
-            // frame->mSkyboxConstants = dynamicUploadGPUVA + mNumAsteroids * sizeof(DrawConstantBuffer);// offsetof(DynamicUploadHeap, mSkyboxConstants);
             frame->mSkyboxConstants = dynamicUploadGPUVA + asteroidsDynamicHeap.GetSkyboxConstantBufferOffset();
 
             // Skybox texture
@@ -699,10 +696,7 @@ void Asteroids::RenderSubset(
     // Frame data
     auto frame = &mFrame[frameIndex];
     AsteroidsDynamicHeap asteroidsDynamicHeap(mNumAsteroids, frame->mDynamicUpload);
-    //auto drawConstantBuffers = static_cast<DrawConstantBuffer*>(frame->mDynamicUpload->DataWO());
     auto drawConstantBuffers = asteroidsDynamicHeap.GetDrawConstantBuffer();
-    //auto indirectArgs = frame->mDynamicUpload->DataWO()->mIndirectArgs;
-    // auto indirectArgs = static_cast<ExecuteIndirectArgs*>((void*)((unsigned long long)frame->mDynamicUpload->DataWO() + mNumAsteroids * sizeof(DrawConstantBuffer) + sizeof(SkyboxConstantBuffer)));
     auto indirectArgs = asteroidsDynamicHeap.GetExecuteIndirectArgs();
  
     // Update asteroid simulation
@@ -854,8 +848,6 @@ void Asteroids::Render(float frameTime, const OrbitCamera& camera, const Setting
 
             // Draw skybox
             {
-                // auto constants = &frame->mDynamicUpload->DataWO()->mSkyboxConstants;
-                // auto constants = static_cast<SkyboxConstantBuffer*>((void*)((unsigned long long)frame->mDynamicUpload->DataWO() + mNumAsteroids * sizeof(DrawConstantBuffer)));
                 auto constants = asteroidsDynamicHeap.GetSkyboxConstantBuffer();
                 XMStoreFloat4x4(&constants->mViewProjection, camera.ViewProjection());
 
@@ -868,7 +860,6 @@ void Asteroids::Render(float frameTime, const OrbitCamera& camera, const Setting
 
             // Draw sprites
             {
-                // auto vertexBase = static_cast<SpriteVertex*>((void*)((unsigned long long)dynamicUploadWO + mNumAsteroids * sizeof(DrawConstantBuffer) + sizeof(SkyboxConstantBuffer) + mNumAsteroids * sizeof(ExecuteIndirectArgs) ));// dynamicUploadWO->mSpriteVertices;
                 auto vertexBase = asteroidsDynamicHeap.GetSpriteVertices();
                 auto vertexEnd = vertexBase;
 
