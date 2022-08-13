@@ -54,13 +54,80 @@ struct ExecuteIndirectArgs {
     D3D12_DRAW_INDEXED_ARGUMENTS mDrawIndexed;
 };
 
-struct DynamicUploadHeap {
-    std::vector<DrawConstantBuffer> mDrawConstantBuffers;
-    SkyboxConstantBuffer mSkyboxConstants;
-    std::vector<ExecuteIndirectArgs> mIndirectArgs;
-    SpriteVertex mSpriteVertices[MAX_SPRITE_VERTICES_PER_FRAME];
-};
+/*
+    The upload heap will be as following
 
+     ------------------------------------
+    | numAsteroids * DrawConstantBuffers |
+    |------------------------------------|
+    |       SkyboxConstantBuffer         |
+    |------------------------------------|
+    | numAsteroids * ExecuteIndirectArgs |
+    |------------------------------------|
+    |            SpriteVertex            |
+     ------------------------------------
+*/
+
+class AsteroidsDynamicHeap
+{
+private:
+    const unsigned int mNumAsteroids;
+    UploadHeap* mUploadHeap = nullptr;
+
+public:
+    AsteroidsDynamicHeap(unsigned int numAsteroids, UploadHeap* uploadHeap) :
+        mNumAsteroids(numAsteroids),
+        mUploadHeap(uploadHeap)
+    {
+    }
+
+    unsigned int GetSize() const
+    {
+        return sizeof(DrawConstantBuffer) * mNumAsteroids + sizeof(SkyboxConstantBuffer) + sizeof(ExecuteIndirectArgs) * mNumAsteroids + sizeof(SpriteVertex) * MAX_SPRITE_VERTICES_PER_FRAME;
+    }
+
+    static unsigned int GetSize(unsigned int numAsteroids)
+    {
+        return sizeof(DrawConstantBuffer) * numAsteroids + sizeof(SkyboxConstantBuffer) + sizeof(ExecuteIndirectArgs) * numAsteroids + sizeof(SpriteVertex) * MAX_SPRITE_VERTICES_PER_FRAME;
+    }
+
+    DrawConstantBuffer* GetDrawConstantBuffer(unsigned int index = 0)
+    {
+        return static_cast<DrawConstantBuffer*>((void*)((unsigned long long)mUploadHeap->DataWO() + index * sizeof(DrawConstantBuffer)));
+    }
+
+    SkyboxConstantBuffer* GetSkyboxConstantBuffer()
+    {
+        return static_cast<SkyboxConstantBuffer*>((void*)((unsigned long long)mUploadHeap->DataWO() + GetSkyboxConstantBufferOffset()));
+    }
+
+    ExecuteIndirectArgs* GetExecuteIndirectArgs(unsigned int index = 0)
+    {
+        return static_cast<ExecuteIndirectArgs*>((void*)((unsigned long long)mUploadHeap->DataWO() + GetExecuteIndirectArgsOffset() + index * sizeof(ExecuteIndirectArgs)));
+    }
+
+    SpriteVertex* GetSpriteVertices()
+    {
+        return static_cast<SpriteVertex*>((void*)((unsigned long long)mUploadHeap->DataWO() + GetSpriteVerticesOffset()));
+    }
+
+    unsigned long long GetSkyboxConstantBufferOffset() const
+    {
+        return mNumAsteroids * sizeof(DrawConstantBuffer);
+    }
+
+    unsigned long long GetExecuteIndirectArgsOffset() const
+    {
+        return GetSkyboxConstantBufferOffset() + sizeof(SkyboxConstantBuffer);
+    }
+
+    unsigned long long GetSpriteVerticesOffset() const
+    {
+        return GetExecuteIndirectArgsOffset() + mNumAsteroids * sizeof(ExecuteIndirectArgs);
+    }
+
+
+};
 
 class Asteroids {
 public:
