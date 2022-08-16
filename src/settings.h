@@ -72,6 +72,7 @@ struct Settings
     bool windowed = true;                   // Use non-fullscreen window
     bool vsync = false;                     // Use v-synced presentation
     bool animate = true;                    // Animate asteroids
+    bool allowTearing = false;              // Allow presented frames to tear
 
     // D3D12-only:
     bool multithreadedRendering = true;     // Generate command lists on multiple threads

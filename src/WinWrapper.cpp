@@ -25,6 +25,7 @@
 #include <map>
 #include <vector>
 #include <iostream>
+#include <dxgi1_5.h>
 
 #include "asteroids_d3d11.h"
 #include "asteroids_d3d12.h"
@@ -155,9 +156,9 @@ LRESULT CALLBACK WindowProc(
 
             // Resize currently active swap chain
             if (gSettings.d3d12)
-                gWorkloadD3D12->ResizeSwapChain(gDXGIFactory, hWnd, gSettings.renderWidth, gSettings.renderHeight);
+                gWorkloadD3D12->ResizeSwapChain(gDXGIFactory, hWnd, gSettings.renderWidth, gSettings.renderHeight, gSettings.allowTearing);
             else
-                gWorkloadD3D11->ResizeSwapChain(gDXGIFactory, hWnd, gSettings.renderWidth, gSettings.renderHeight);
+                gWorkloadD3D11->ResizeSwapChain(gDXGIFactory, hWnd, gSettings.renderWidth, gSettings.renderHeight, gSettings.allowTearing);
 
             return 0;
         }
@@ -258,6 +259,21 @@ LRESULT CALLBACK WindowProc(
 }
 
 
+bool IsTearingSupported()
+{
+    BOOL allowTearing = FALSE;
+
+    IDXGIFactory5* pIFactory5 = nullptr;
+    if (SUCCEEDED(gDXGIFactory->QueryInterface(&pIFactory5))) {
+        if (FAILED(pIFactory5->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing)))) {
+            allowTearing = FALSE;
+        }
+        SafeRelease(&pIFactory5);
+    }
+
+    return allowTearing;
+}
+
 int main(int argc, char** argv)
 {
     auto d3d11Available = CheckDll("d3d11.dll");
@@ -292,6 +308,8 @@ int main(int argc, char** argv)
         } else if (_stricmp(argv[a], "-fullscreen") == 0) {
             gSettings.windowed = false;
             printf("Fullscreen\n");
+        } else if (_stricmp(argv[a], "-allow_tearing") == 0) {
+            gSettings.allowTearing = true;
         } else if (_stricmp(argv[a], "-window") == 0 && a + 2 < argc) {
             gSettings.windowWidth = atoi(argv[++a]);
             gSettings.windowHeight = atoi(argv[++a]);
@@ -314,6 +332,7 @@ int main(int argc, char** argv)
             fprintf(stderr, "  -nod3d11\n");
             fprintf(stderr, "  -nod3d12\n");
             fprintf(stderr, "  -fullscreen\n");
+            fprintf(stderr, "  -allow_tearing\n");
             fprintf(stderr, "  -window [width] [height]\n");
             fprintf(stderr, "  -render_scale [scale]\n");
             fprintf(stderr, "  -locked_fps [fps]\n");
@@ -330,6 +349,11 @@ int main(int argc, char** argv)
 
     // DXGI Factory
     ThrowIfFailed(CreateDXGIFactory2(0, IID_PPV_ARGS(&gDXGIFactory)));
+
+    if (gSettings.allowTearing && !IsTearingSupported()) {
+        fprintf(stderr, "error: tearing is not supported on this PC.\n");
+        return -1;
+    }
 
     // Setup GUI
     gD3D12Control = gGUI.AddSprite(5, 10, 140, 50, "directx12.dds");
@@ -471,10 +495,10 @@ int main(int argc, char** argv)
         if (d3d12LastFrame != gSettings.d3d12) {
             if (gSettings.d3d12) {
                 gWorkloadD3D11->ReleaseSwapChain();
-                gWorkloadD3D12->ResizeSwapChain(gDXGIFactory, hWnd, gSettings.renderWidth, gSettings.renderHeight);
+                gWorkloadD3D12->ResizeSwapChain(gDXGIFactory, hWnd, gSettings.renderWidth, gSettings.renderHeight, gSettings.allowTearing);
             } else {
                 gWorkloadD3D12->ReleaseSwapChain();
-                gWorkloadD3D11->ResizeSwapChain(gDXGIFactory, hWnd, gSettings.renderWidth, gSettings.renderHeight);
+                gWorkloadD3D11->ResizeSwapChain(gDXGIFactory, hWnd, gSettings.renderWidth, gSettings.renderHeight, gSettings.allowTearing);
             }
         }
 

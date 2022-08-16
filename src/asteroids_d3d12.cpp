@@ -315,7 +315,7 @@ inline void DisableDXGIWindowChanges(IUnknown* device, HWND window)
     pDXGIDevice->Release();
 }
 
-void Asteroids::ResizeSwapChain(IDXGIFactory2* dxgiFactory, HWND outputWindow, unsigned int width, unsigned int height)
+void Asteroids::ResizeSwapChain(IDXGIFactory2* dxgiFactory, HWND outputWindow, unsigned int width, unsigned int height, bool allowTearing)
 {
     ReleaseSwapChain();
 
@@ -333,7 +333,7 @@ void Asteroids::ResizeSwapChain(IDXGIFactory2* dxgiFactory, HWND outputWindow, u
         swapChainDesc.Scaling = DXGI_SCALING_STRETCH;
         swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
         swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED; // Not used
-        swapChainDesc.Flags = 0;
+        swapChainDesc.Flags = allowTearing ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 
         IDXGISwapChain1 *swapChain1 = nullptr;
         ThrowIfFailed(dxgiFactory->CreateSwapChainForHwnd(
@@ -345,8 +345,8 @@ void Asteroids::ResizeSwapChain(IDXGIFactory2* dxgiFactory, HWND outputWindow, u
         swapChain1->Release();
     }
 
+    // create render target view
     {
-        // Create an SRGB view of the swap chain buffer
         D3D12_RENDER_TARGET_VIEW_DESC desc = {};
         desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2D;
         desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM_SRGB;
@@ -385,7 +385,7 @@ void Asteroids::ResizeSwapChain(IDXGIFactory2* dxgiFactory, HWND outputWindow, u
         mDevice->CreateDepthStencilView(mDepthStencil, nullptr, mDepthStencilView);
     }
 
-    // create the viewport and scissor
+    // update the viewport and scissor
     ZeroMemory(&mViewPort, sizeof(D3D11_VIEWPORT));
     mViewPort.TopLeftX = 0;
     mViewPort.TopLeftY = 0;
@@ -916,10 +916,13 @@ void Asteroids::Render(float frameTime, const OrbitCamera& camera, const Setting
     ProfileEndRenderSubmit();
 
     ProfileBeginPresent(backBufferIndex);
-    if (settings.vsync)
+    if (settings.vsync) {
         ThrowIfFailed(mSwapChain->Present(1, 0));
-    else
+    } else if (settings.allowTearing) {
+        ThrowIfFailed(mSwapChain->Present(0, DXGI_PRESENT_ALLOW_TEARING));
+    } else {
         ThrowIfFailed(mSwapChain->Present(0, 0));
+    }
     ProfileEndPresent();
 
     ThrowIfFailed(mCommandQueue->Signal(mFence, ++mCurrentFence));
