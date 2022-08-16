@@ -23,7 +23,6 @@
 #define ENABLE_VTUNE_TASK_PROFILING 1
 
 // Content settings
-enum { NUM_ASTEROIDS = 50000 };
 enum { TEXTURE_DIM = 256 }; // Req'd to be pow2 at the moment
 enum { TEXTURE_ANISO = 2 };
 enum { NUM_UNIQUE_MESHES = 1000 };
@@ -61,6 +60,8 @@ struct Settings
     int windowHeight = 720;
     int renderWidth;
     int renderHeight;
+
+    unsigned int numAsteroids = 50000;
 
     unsigned int lockedFrameRate = 15;
     bool lockFrameRate = false;

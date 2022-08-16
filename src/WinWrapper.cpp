@@ -321,6 +321,9 @@ int main(int argc, char** argv)
             gSettings.lockFrameRate = true;
             gSettings.lockedFrameRate = atoi(argv[++a]);
             printf("FPS locked to %u\n", gSettings.lockedFrameRate);
+        } else if (_stricmp(argv[a], "-num_asteroids") == 0 && a + 1 < argc) {
+            gSettings.numAsteroids = (unsigned int) std::max(0, atoi(argv[++a]));
+            printf("%u asteroids\n", gSettings.numAsteroids);
         } else if (_stricmp(argv[a], "-perf_output") == 0 && a + 1 < argc) {
             perfOutputPath = argv[++a];
             printf("Output frame performance to '%s'\n", perfOutputPath);
@@ -338,6 +341,7 @@ int main(int argc, char** argv)
             fprintf(stderr, "  -locked_fps [fps]\n");
             fprintf(stderr, "  -perf_output [path]\n");
             fprintf(stderr, "  -warp\n");
+            fprintf(stderr, "  -num_asteroids [count]\n");
             return -1;
         }
     }
@@ -363,7 +367,7 @@ int main(int argc, char** argv)
     ResetCameraView();
     // Camera projection set up in WM_SIZE
 
-    AsteroidsSimulation asteroids(1337, NUM_ASTEROIDS, NUM_UNIQUE_MESHES, MESH_MAX_SUBDIV_LEVELS, NUM_UNIQUE_TEXTURES);
+    AsteroidsSimulation asteroids(1337, gSettings.numAsteroids, NUM_UNIQUE_MESHES, MESH_MAX_SUBDIV_LEVELS, NUM_UNIQUE_TEXTURES);
 
     // Create workloads
     if (d3d11Available) {
@@ -391,7 +395,7 @@ int main(int argc, char** argv)
             }
         }
 
-        gWorkloadD3D12 = new AsteroidsD3D12::Asteroids(&asteroids, &gGUI, NUM_SUBSETS, adapter);
+        gWorkloadD3D12 = new AsteroidsD3D12::Asteroids(&asteroids, &gGUI, NUM_SUBSETS, adapter, gSettings.numAsteroids);
     }
     gSettings.d3d12 = (gWorkloadD3D12 != nullptr);
 

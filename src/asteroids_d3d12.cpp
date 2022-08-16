@@ -55,7 +55,7 @@ enum RootParameters
     RP_SMP,
 };
 
-Asteroids::Asteroids(AsteroidsSimulation* asteroids, GUI *gui, UINT minCmdLsts, IDXGIAdapter* adapter)
+Asteroids::Asteroids(AsteroidsSimulation* asteroids, GUI *gui, UINT minCmdLsts, IDXGIAdapter* adapter, UINT asteroidCount)
     : mAsteroids(asteroids)
     , mGUI(gui)
     , mFenceEventHandle(CreateEvent(NULL, FALSE, FALSE, NULL))
@@ -156,26 +156,45 @@ Asteroids::Asteroids(AsteroidsSimulation* asteroids, GUI *gui, UINT minCmdLsts, 
         mSwapChainBuffer[s].mRenderTargetView = mRTVDescs->Append();
     }
 
+    /*
+    struct DynamicUploadHeap {
+        DrawConstantBuffer mDrawConstantBuffers[NUM_ASTEROIDS];
+        SkyboxConstantBuffer mSkyboxConstants;
+        ExecuteIndirectArgs mIndirectArgs[NUM_ASTEROIDS];
+        SpriteVertex mSpriteVertices[MAX_SPRITE_VERTICES_PER_FRAME];
+    };
+    */
+    size_t DrawConstantBuffersOffset   = 0;
+    size_t SkyboxConstantBufferOffset = Align<size_t>(DrawConstantBuffersOffset + sizeof(DrawConstantBuffer) * asteroidCount,  D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+    size_t ExecuteIndirectArgsOffset  = Align<size_t>(SkyboxConstantBufferOffset + sizeof(SkyboxConstantBuffer),               D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+    size_t SpriteVertexOffset         = Align<size_t>(ExecuteIndirectArgsOffset + sizeof(ExecuteIndirectArgs) * asteroidCount, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+    size_t DynamicUploadHeapSize      = SpriteVertexOffset + sizeof(SpriteVertex) * MAX_SPRITE_VERTICES_PER_FRAME;
+
     // Per-frame resources
     for (UINT f = 0; f < NUM_FRAMES_TO_BUFFER; f++) {
         auto frame = &mFrame[f];
         ThrowIfFailed(mDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&frame->mCmdAlloc)));
 
-        frame->mDynamicUpload = new UploadHeapT<DynamicUploadHeap>(mDevice);
+        frame->mDynamicUpload = new UploadHeap(mDevice, DynamicUploadHeapSize);
         auto dynamicUploadWO = frame->mDynamicUpload->DataWO();
         auto dynamicUploadGPUVA = frame->mDynamicUpload->Heap()->GetGPUVirtualAddress();
 
-        frame->mDrawConstantBuffersGPUVA = dynamicUploadGPUVA + offsetof(DynamicUploadHeap, mDrawConstantBuffers);
+        frame->mDrawConstantBuffersWO  = (DrawConstantBuffer*)   ((uintptr_t) dynamicUploadWO + DrawConstantBuffersOffset);
+        frame->mSkyboxConstantBufferWO = (SkyboxConstantBuffer*) ((uintptr_t) dynamicUploadWO + SkyboxConstantBufferOffset);
+        frame->mExecuteIndirectArgsWO  = (ExecuteIndirectArgs*)  ((uintptr_t) dynamicUploadWO + ExecuteIndirectArgsOffset);
+        frame->mSpriteVerticesWO       = (SpriteVertex*)         ((uintptr_t) dynamicUploadWO + SpriteVertexOffset);
+
+        frame->mDrawConstantBuffersGPUVA = dynamicUploadGPUVA + DrawConstantBuffersOffset;
 
         // Set any static asteroid data now
         auto staticData = mAsteroids->StaticData();
-        for (int j = 0; j < NUM_ASTEROIDS; ++j) {
-            auto constants = &dynamicUploadWO->mDrawConstantBuffers[j];
+        for (unsigned int j = 0; j < asteroidCount; ++j) {
+            auto constants = &frame->mDrawConstantBuffersWO[j];
             constants->mSurfaceColor = staticData[j].surfaceColor;
             constants->mDeepColor = staticData[j].deepColor;
             constants->mTextureIndex = staticData[j].textureIndex;
 
-            auto indirectDraw = &dynamicUploadWO->mIndirectArgs[j];
+            auto indirectDraw = &frame->mExecuteIndirectArgsWO[j];
             indirectDraw->mConstantBuffer = frame->mDrawConstantBuffersGPUVA + sizeof(DrawConstantBuffer) * j;
             indirectDraw->mDrawIndexed.InstanceCount = 1;
             indirectDraw->mDrawIndexed.StartInstanceLocation = 0;
@@ -184,7 +203,7 @@ Asteroids::Asteroids(AsteroidsSimulation* asteroids, GUI *gui, UINT minCmdLsts, 
 
         // Dynamic sprite vertices
         {
-            frame->mSpriteVertexBufferView.BufferLocation = dynamicUploadGPUVA + offsetof(DynamicUploadHeap, mSpriteVertices);
+            frame->mSpriteVertexBufferView.BufferLocation = dynamicUploadGPUVA + SpriteVertexOffset;
             frame->mSpriteVertexBufferView.StrideInBytes  = sizeof(SpriteVertex);
             frame->mSpriteVertexBufferView.SizeInBytes    = sizeof(SpriteVertex) * MAX_SPRITE_VERTICES_PER_FRAME;
         }
@@ -195,7 +214,7 @@ Asteroids::Asteroids(AsteroidsSimulation* asteroids, GUI *gui, UINT minCmdLsts, 
             frame->mSRVDescs = new SRVDescriptorList(mDevice, 100);
 
             // Skybox constants
-            frame->mSkyboxConstants = dynamicUploadGPUVA + offsetof(DynamicUploadHeap, mSkyboxConstants);
+            frame->mSkyboxConstants = dynamicUploadGPUVA + SkyboxConstantBufferOffset;
 
             // Skybox texture
             {
@@ -227,9 +246,7 @@ Asteroids::Asteroids(AsteroidsSimulation* asteroids, GUI *gui, UINT minCmdLsts, 
     // Change heaps is "free" at cmdlst boundaries and this greatly simplifies the code
     // Thus the expectation is that we have ~ #threads heaps for multithreaded rendering on most GPUs
     // Need at least one draw in each heap/cmd list...
-    minCmdLsts = std::min(minCmdLsts, (UINT)NUM_ASTEROIDS);
-    CreateSubsets(minCmdLsts);
-    std::cout << "Using " << mSubsetCount << " subsets per frame." << std::endl;
+    CreateSubsets(minCmdLsts, asteroidCount);
 
     // Just in case
     WaitForAll();
@@ -540,22 +557,27 @@ void Asteroids::CreatePSOs()
 }
 
 
-void Asteroids::CreateSubsets(UINT numHeapsPerFrame)
+void Asteroids::CreateSubsets(UINT numHeapsPerFrame, UINT asteroidCount)
 {
     ReleaseSubsets();
 
-    mDrawsPerSubset = (NUM_ASTEROIDS + numHeapsPerFrame - 1) / numHeapsPerFrame;
-    mSubsetCount = numHeapsPerFrame;
+    numHeapsPerFrame = std::min(numHeapsPerFrame, asteroidCount);
+    if (numHeapsPerFrame > 0) {
+        std::cout << "Using " << numHeapsPerFrame << " subsets per frame." << std::endl;
 
-    for (UINT f = 0; f < NUM_FRAMES_TO_BUFFER; f++) {
-        // Per-frame data
-        auto frame = &mFrame[f];
-        auto dynamicUploadGPUVA = frame->mDynamicUpload->Heap()->GetGPUVirtualAddress();
+        mDrawsPerSubset = (asteroidCount + numHeapsPerFrame - 1) / numHeapsPerFrame;
+        mSubsetCount = numHeapsPerFrame;
 
-        for (UINT subsetIdx = 0; subsetIdx < mSubsetCount; ++subsetIdx) {
-            void* memory = _aligned_malloc(sizeof(SubsetD3D12), 64);
-            auto subset = new(memory) SubsetD3D12(mDevice, NUM_UNIQUE_TEXTURES, mAsteroidPSO);
-            frame->mSubsets.push_back(subset);
+        for (UINT f = 0; f < NUM_FRAMES_TO_BUFFER; f++) {
+            // Per-frame data
+            auto frame = &mFrame[f];
+            auto dynamicUploadGPUVA = frame->mDynamicUpload->Heap()->GetGPUVirtualAddress();
+
+            for (UINT subsetIdx = 0; subsetIdx < mSubsetCount; ++subsetIdx) {
+                void* memory = _aligned_malloc(sizeof(SubsetD3D12), 64);
+                auto subset = new(memory) SubsetD3D12(mDevice, NUM_UNIQUE_TEXTURES, mAsteroidPSO);
+                frame->mSubsets.push_back(subset);
+            }
         }
     }
 }
@@ -687,13 +709,13 @@ void Asteroids::RenderSubset(
     ProfileBeginRenderSubset();
 
     UINT drawStart = mDrawsPerSubset * subsetIdx;
-    UINT drawEnd = std::min(drawStart + mDrawsPerSubset, (UINT)NUM_ASTEROIDS);
+    UINT drawEnd = std::min(drawStart + mDrawsPerSubset, settings.numAsteroids);
     assert(drawStart < drawEnd);
 
     // Frame data
     auto frame = &mFrame[frameIndex];
-    auto drawConstantBuffers = frame->mDynamicUpload->DataWO()->mDrawConstantBuffers;
-    auto indirectArgs = frame->mDynamicUpload->DataWO()->mIndirectArgs;
+    auto drawConstantBuffers = frame->mDrawConstantBuffersWO;
+    auto indirectArgs = frame->mExecuteIndirectArgsWO;
 
     // Update asteroid simulation
     ProfileBeginSimUpdate();
@@ -721,7 +743,30 @@ void Asteroids::RenderSubset(
     cmdLst->SetGraphicsRootDescriptorTable(RP_TEX_SRV, mSRVDescs->GPU(0));
     cmdLst->SetGraphicsRootDescriptorTable(RP_SMP, mSampler);
 
-    if (!settings.executeIndirect)
+    if (settings.executeIndirect)
+    {
+        // ExecuteIndirect path
+        if (drawStart < drawEnd)
+        {
+            for (UINT drawIdx = drawStart; drawIdx < drawEnd; ++drawIdx)
+            {
+                auto dynamicData = &dynamicAsteroidData[drawIdx];
+
+                XMStoreFloat4x4(&drawConstantBuffers[drawIdx].mWorld, dynamicData->world);
+                XMStoreFloat4x4(&drawConstantBuffers[drawIdx].mViewProjection, viewProjection);
+
+                auto drawIndexed = &indirectArgs[drawIdx].mDrawIndexed;
+                drawIndexed->IndexCountPerInstance = dynamicData->indexCount;
+                drawIndexed->StartIndexLocation = dynamicData->indexStart;
+            }
+
+            UINT64 offset = (BYTE*)(&indirectArgs[drawStart]) - (BYTE*)frame->mDynamicUpload->DataWO();
+            cmdLst->ExecuteIndirect(mCommandSignature, drawEnd - drawStart,
+                                    frame->mDynamicUpload->Heap(), offset,
+                                    nullptr, 0);
+        }
+    }
+    else
     {
         // Standard draw path
         auto constantsPointer = frame->mDrawConstantBuffersGPUVA + sizeof(DrawConstantBuffer) * drawStart;
@@ -739,26 +784,6 @@ void Asteroids::RenderSubset(
 
             cmdLst->DrawIndexedInstanced(dynamicData->indexCount, 1, dynamicData->indexStart, staticData->vertexStart, 0);
         }
-    }
-    else
-    {
-        // ExecuteIndirect path
-        for (UINT drawIdx = drawStart; drawIdx < drawEnd; ++drawIdx)
-        {
-            auto dynamicData = &dynamicAsteroidData[drawIdx];
-
-            XMStoreFloat4x4(&drawConstantBuffers[drawIdx].mWorld, dynamicData->world);
-            XMStoreFloat4x4(&drawConstantBuffers[drawIdx].mViewProjection, viewProjection);
-
-            auto drawIndexed = &indirectArgs[drawIdx].mDrawIndexed;
-            drawIndexed->IndexCountPerInstance = dynamicData->indexCount;
-            drawIndexed->StartIndexLocation = dynamicData->indexStart;
-        }
-
-        UINT64 offset = (BYTE*)(&indirectArgs[drawStart]) - (BYTE*)frame->mDynamicUpload->DataWO();
-        cmdLst->ExecuteIndirect(mCommandSignature, drawEnd - drawStart,
-                                frame->mDynamicUpload->Heap(), offset,
-                                nullptr, 0);
     }
 
     subset->End();
@@ -843,7 +868,7 @@ void Asteroids::Render(float frameTime, const OrbitCamera& camera, const Setting
 
             // Draw skybox
             {
-                auto constants = &frame->mDynamicUpload->DataWO()->mSkyboxConstants;
+                auto constants = frame->mSkyboxConstantBufferWO;
                 XMStoreFloat4x4(&constants->mViewProjection, camera.ViewProjection());
 
                 mPostCmdLst->IASetVertexBuffers(0, 1, &mSkyboxVertexBufferView);
@@ -855,7 +880,7 @@ void Asteroids::Render(float frameTime, const OrbitCamera& camera, const Setting
 
             // Draw sprites
             {
-                auto vertexBase = dynamicUploadWO->mSpriteVertices;
+                auto vertexBase = frame->mSpriteVerticesWO;
                 auto vertexEnd = vertexBase;
 
                 // Drop off any dynamic descriptors from the last frame

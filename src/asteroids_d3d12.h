@@ -54,16 +54,9 @@ struct ExecuteIndirectArgs {
     D3D12_DRAW_INDEXED_ARGUMENTS mDrawIndexed;
 };
 
-struct DynamicUploadHeap {
-    DrawConstantBuffer mDrawConstantBuffers[NUM_ASTEROIDS];
-    SkyboxConstantBuffer mSkyboxConstants;
-    ExecuteIndirectArgs mIndirectArgs[NUM_ASTEROIDS];
-    SpriteVertex mSpriteVertices[MAX_SPRITE_VERTICES_PER_FRAME];
-};
-
 class Asteroids {
 public:
-    Asteroids(AsteroidsSimulation* asteroids, GUI *gui, UINT minCmdLsts, IDXGIAdapter* adapter);
+    Asteroids(AsteroidsSimulation* asteroids, GUI *gui, UINT minCmdLsts, IDXGIAdapter* adapter, UINT asteroidCount);
     ~Asteroids();
 
     void WaitForReadyToRender();
@@ -84,7 +77,7 @@ private:
 
     void CreatePSOs();
 
-    void CreateSubsets(UINT numHeapsPerFrame);
+    void CreateSubsets(UINT numHeapsPerFrame, UINT asteroidCount);
     void ReleaseSubsets();
 
     void CreateMeshes();
@@ -94,7 +87,12 @@ private:
         std::vector<SubsetD3D12*>   mSubsets;
         ID3D12CommandAllocator*     mCmdAlloc = nullptr;
 
-        UploadHeapT<DynamicUploadHeap>* mDynamicUpload = nullptr;
+        UploadHeap* mDynamicUpload = nullptr;
+        DrawConstantBuffer*   mDrawConstantBuffersWO = nullptr;
+        SkyboxConstantBuffer* mSkyboxConstantBufferWO = nullptr;
+        ExecuteIndirectArgs*  mExecuteIndirectArgsWO = nullptr;
+        SpriteVertex*         mSpriteVerticesWO = nullptr;
+
         D3D12_VERTEX_BUFFER_VIEW    mSpriteVertexBufferView;
         D3D12_GPU_VIRTUAL_ADDRESS   mDrawConstantBuffersGPUVA;
 
