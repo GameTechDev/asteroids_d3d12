@@ -26,6 +26,9 @@
 #include <vector>
 #include <iostream>
 
+#include <dxgi1_5.h>
+#include "util.h"
+
 #include "asteroids_d3d11.h"
 #include "asteroids_d3d12.h"
 #include "camera.h"
@@ -258,6 +261,35 @@ LRESULT CALLBACK WindowProc(
 }
 
 
+bool IsTearingSupported()
+{
+    BOOL allowTearing = FALSE;
+
+    IDXGIFactory5* pIFactory5 = nullptr;
+    HRESULT hr = gDXGIFactory->QueryInterface(&pIFactory5);
+    if (SUCCEEDED(hr))
+    {
+        hr = pIFactory5->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing));
+        SafeRelease(&pIFactory5);
+    }
+    else
+    {
+        std::cout << "Cannot check support for tearing." << std::endl;
+        return false;
+    }
+
+    if (allowTearing)
+    {
+        std::cout << "Tearing is supported." << std::endl;
+    }
+    else
+    {
+        std::cout << "Tearing is not supported!" << std::endl;
+    }
+
+    return allowTearing;
+}
+
 int main(int argc, char** argv)
 {
     auto d3d11Available = CheckDll("d3d11.dll");
@@ -294,7 +326,7 @@ int main(int argc, char** argv)
             printf("Fullscreen\n");
         } else if (_stricmp(argv[a], "-allow_tearing") == 0) {
             gSettings.allowTearing = true;
-            printf("Tearing allowed\n");
+            printf("Tearing requested by user.\n");
         } else if (_stricmp(argv[a], "-window") == 0 && a + 2 < argc) {
             gSettings.windowWidth = atoi(argv[++a]);
             gSettings.windowHeight = atoi(argv[++a]);
@@ -337,6 +369,12 @@ int main(int argc, char** argv)
 
     if (gSettings.allowTearing)
     {
+        if (!IsTearingSupported())
+        {
+            std::cout << "Tearing is not supported. Disabling tearing!" << std::endl;
+            gSettings.allowTearing = false;
+        }
+
         if (gSettings.vsync)
         {
             std::cout << "Tearing cannot be used when vsync is on. Disabling tearing!" << std::endl;
