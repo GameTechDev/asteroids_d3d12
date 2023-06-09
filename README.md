@@ -44,3 +44,6 @@ Requirements
 - DirectX 12 capable hardware and drivers. For instance, Intel HD Graphics 4400 or newer.
 
 For more information on Intel graphics and game code, please visit https://software.intel.com/gamedev
+
+Last touched 6/9/23
+
